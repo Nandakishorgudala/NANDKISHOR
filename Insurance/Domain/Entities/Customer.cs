@@ -27,8 +27,8 @@ namespace Insurance.Domain.Entities
 
         public Customer(int userId, int age, string phoneNumber, string address, string city, string state, string zipCode)
         {
-            if (age < 18 || age > 100)
-                throw new ArgumentException("Age must be between 18 and 100.");
+            if (age < 18 || age > 120)
+                throw new ArgumentException("Age must be between 18 and 120.");
 
             if (string.IsNullOrWhiteSpace(phoneNumber))
                 throw new ArgumentException("Phone number is required.");
@@ -47,8 +47,8 @@ namespace Insurance.Domain.Entities
 
         public void UpdateProfile(int age, string phoneNumber, string address, string city, string state, string zipCode)
         {
-            if (age < 18 || age > 100)
-                throw new ArgumentException("Age must be between 18 and 100.");
+            if (age < 18 || age > 120)
+                throw new ArgumentException("Age must be between 18 and 120.");
 
             Age = age;
             PhoneNumber = phoneNumber;

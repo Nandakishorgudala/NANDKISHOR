@@ -22,7 +22,15 @@ namespace Insurance.Application.Mappings
             // PolicyProduct mappings
             CreateMap<PolicyProduct, PolicyProductResponse>();
 
-            CreateMap<CreatePolicyProductRequest, PolicyProduct>();
+            CreateMap<CreatePolicyProductRequest, PolicyProduct>()
+                .ConstructUsing(src => new PolicyProduct(
+                    src.Name,
+                    src.Description,
+                    src.BasePremium,
+                    src.CoverageAmount,
+                    src.TenureMonths,
+                    3 // Default claim limit
+                ));
 
             // Claims mappings
             CreateMap<Insurance.Domain.Entities.Claims, ClaimResponse>()

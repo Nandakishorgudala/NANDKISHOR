@@ -41,15 +41,13 @@ namespace Insurance.Domain.Entities
                         string description,
                         decimal basePremium,
                         decimal coverageAmount,
-                        int tenureMonths,
-                        int claimLimit)
+                        int tenureMonths)
                     {
                         Name = name;
                         Description = description;
                         BasePremium = basePremium;
                         CoverageAmount = coverageAmount;
                         TenureMonths = tenureMonths;
-                        ClaimLimit = claimLimit;
 
                         SetUpdatedTime();
                     }

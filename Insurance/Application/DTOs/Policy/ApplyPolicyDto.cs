@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -35,6 +35,9 @@ namespace Application.DTOs.Policy
 
         [Range(0, double.MaxValue)]
         public decimal Deductible { get; set; }
+
+        [Required]
+        public DateTime StartDate { get; set; }
     }
 
 

@@ -19,6 +19,21 @@ namespace Infrastructure.Repositories
             return await _context.Set<Policy>()
                 .Include(p => p.Customer)
                 .Include(p => p.Application)
+                    .ThenInclude(a => a.PolicyProduct)
+                .FirstOrDefaultAsync(p => p.Id == id);
+        }
+
+        public async Task<Policy> GetByIdWithDetailsAsync(int id)
+        {
+            return await _context.Set<Policy>()
+                .Include(p => p.Customer)
+                    .ThenInclude(c => c.User)
+                .Include(p => p.Application)
+                    .ThenInclude(a => a.Agent)
+                        .ThenInclude(ag => ag.User)
+                .Include(p => p.Application)
+                    .ThenInclude(a => a.PolicyProduct)
+                .Include(p => p.Claims)
                 .FirstOrDefaultAsync(p => p.Id == id);
         }
 
@@ -27,6 +42,7 @@ namespace Infrastructure.Repositories
             return await _context.Set<Policy>()
                 .Include(p => p.Customer)
                 .Include(p => p.Application)
+                    .ThenInclude(a => a.PolicyProduct)
                 .FirstOrDefaultAsync(p => p.ApplicationId == applicationId);
         }
 
@@ -35,6 +51,7 @@ namespace Infrastructure.Repositories
             return await _context.Set<Policy>()
                 .Include(p => p.Customer)
                 .Include(p => p.Application)
+                    .ThenInclude(a => a.PolicyProduct)
                 .Where(p => p.CustomerId == customerId)
                 .OrderByDescending(p => p.CreatedAt)
                 .ToListAsync();
@@ -57,6 +74,7 @@ namespace Infrastructure.Repositories
             return await _context.Set<Policy>()
                 .Include(p => p.Customer)
                 .Include(p => p.Application)
+                    .ThenInclude(a => a.PolicyProduct)
                 .OrderByDescending(p => p.CreatedAt)
                 .ToListAsync();
         }

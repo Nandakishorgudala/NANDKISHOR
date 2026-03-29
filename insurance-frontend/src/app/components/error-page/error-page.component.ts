@@ -83,7 +83,7 @@ interface ErrorDetails {
         <div class="mt-8 text-center">
           <p class="text-gray-600">
             Need help? 
-            <a href="mailto:support@cdims.com" class="text-blue-600 hover:text-blue-700 font-semibold underline">
+            <a href="mailto:support@shieldsure.com" class="text-blue-600 hover:text-blue-700 font-semibold underline">
               Contact Support
             </a>
           </p>

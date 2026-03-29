@@ -168,3 +168,8 @@ yarn-error.log*
 ._*
 .Spotlight-V100
 .Trashes
+
+# App Settings
+appsettings.json
+appsettings.Development.json
+appsettings.*.json

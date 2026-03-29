@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -28,6 +28,20 @@ namespace Insurance.Infrastructure.Repositories
                 .FirstOrDefaultAsync(pa => pa.Id == id);
         }
 
+        public async Task<PolicyApplication?> GetByIdWithDetailsAsync(int id)
+        {
+            return await _context.PolicyApplications
+                .Include(pa => pa.Customer)
+                    .ThenInclude(c => c.User)
+                .Include(pa => pa.Customer)
+                    .ThenInclude(c => c.Policies)
+                .Include(pa => pa.Agent)
+                    .ThenInclude(a => a.User)
+                .Include(pa => pa.PolicyProduct)
+                .Include(pa => pa.Document)
+                .FirstOrDefaultAsync(pa => pa.Id == id);
+        }
+
         public async Task<IEnumerable<PolicyApplication>> GetByAgentIdAsync(int agentId)
         {
             return await _context.PolicyApplications
@@ -42,6 +56,7 @@ namespace Insurance.Infrastructure.Repositories
         public async Task<IEnumerable<PolicyApplication>> GetByCustomerIdAsync(int customerId)
         {
             return await _context.PolicyApplications
+                .Include(pa => pa.PolicyProduct)
                 .Where(pa => pa.CustomerId == customerId)
                 .OrderByDescending(pa => pa.CreatedAt)
                 .ToListAsync();
@@ -50,6 +65,9 @@ namespace Insurance.Infrastructure.Repositories
         public async Task<IEnumerable<PolicyApplication>> GetPendingApplicationsAsync()
         {
             return await _context.PolicyApplications
+                .Include(pa => pa.Customer)
+                    .ThenInclude(c => c.User)
+                .Include(pa => pa.PolicyProduct)
                 .Where(pa => pa.Status == Domain.Enums.ApplicationStatus.Pending || 
                             pa.Status == Domain.Enums.ApplicationStatus.Assigned)
                 .OrderBy(pa => pa.CreatedAt)
@@ -70,6 +88,7 @@ namespace Insurance.Infrastructure.Repositories
                     .ThenInclude(c => c.User)
                 .Include(pa => pa.Agent)
                     .ThenInclude(a => a.User)
+                .Include(pa => pa.PolicyProduct)
                 .OrderByDescending(pa => pa.CreatedAt)
                 .ToListAsync();
         }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -20,17 +20,20 @@ namespace Application.Services
         private readonly IAgentRepository _agentRepo;
         private readonly IPolicyRepository _policyRepo;
         private readonly IPolicyProductRepository _policyProductRepo;
+        private readonly IApplicationDocumentRepository _documentRepo;
 
         public PolicyApplicationService(
             IPolicyApplicationRepository applicationRepo,
             IAgentRepository agentRepo,
             IPolicyRepository policyRepo,
-            IPolicyProductRepository policyProductRepo)
+            IPolicyProductRepository policyProductRepo,
+            IApplicationDocumentRepository documentRepo)
         {
             _applicationRepo = applicationRepo;
             _agentRepo = agentRepo;
             _policyRepo = policyRepo;
             _policyProductRepo = policyProductRepo;
+            _documentRepo = documentRepo;
         }
 
         // ==============================
@@ -38,6 +41,10 @@ namespace Application.Services
         // ==============================
         public async Task<int> SubmitApplicationWithPlanAsync(int customerId, ApplyPolicyWithPlanDto dto)
         {
+            // Validate that document exists
+            var document = await _documentRepo.GetByIdAsync(dto.DocumentId)
+                ?? throw new InvalidOperationException("The specified document was not found. Please upload a document before submitting.");
+
             // Calculate base coverage with plan multiplier
             decimal planMultiplier = dto.PlanType.ToLower() switch
             {
@@ -57,15 +64,29 @@ namespace Application.Services
                 _ => 0.9m       // 10% less coverage
             };
 
-            // Calculate final coverage
+            // Calculate final coverage (Use RequestedCoverage if provided, otherwise fallback to automated calculation)
             decimal baseCoverage = dto.AssetValue * 0.8m; // 80% of asset value
-            decimal finalCoverage = baseCoverage * planMultiplier * ageMultiplier;
+            decimal automatedCoverage = baseCoverage * planMultiplier * ageMultiplier;
+            decimal finalCoverage = (dto.RequestedCoverage.HasValue && dto.RequestedCoverage.Value > 0)
+                ? dto.RequestedCoverage.Value
+                : automatedCoverage;
+
+            // Enforce validation: Coverage cannot exceed Asset Value (as requested)
+            if (finalCoverage > dto.AssetValue)
+            {
+                finalCoverage = dto.AssetValue;
+            }
 
             // Calculate risk score
             int riskScore = CalculateRiskScoreEnhanced(dto);
             
             // Calculate premium based on plan and age
             decimal premium = CalculatePremiumEnhanced(dto.AssetValue, finalCoverage, riskScore, planMultiplier, dto.CustomerAge);
+
+            // Fetch policy product for tenure
+            var policyProduct = await _policyProductRepo.GetByIdAsync(dto.PolicyProductId);
+            DateTime startDate = dto.StartDate;
+            DateTime endDate = startDate.AddMonths(policyProduct?.TenureMonths ?? 12);
 
             var application = PolicyApplication.Create(
                 customerId,
@@ -81,10 +102,18 @@ namespace Application.Services
                 dto.Deductible,
                 riskScore,
                 premium,
-                riskScore >= 80
+                riskScore >= 80,
+                startDate,
+                endDate
             );
 
             await _applicationRepo.AddAsync(application);
+            await _applicationRepo.SaveChangesAsync();
+
+            // Link the uploaded document to this newly created application
+            var docToLink = await _documentRepo.GetByIdAsync(dto.DocumentId)
+                ?? throw new InvalidOperationException($"Document {dto.DocumentId} not found during application linking.");
+            docToLink.LinkToApplication(application.Id);
             await _applicationRepo.SaveChangesAsync();
 
             // No automatic agent assignment - admin will assign manually
@@ -99,6 +128,11 @@ namespace Application.Services
         {
             int riskScore = CalculateRiskScore(dto);
             decimal premium = CalculatePremium(dto.AssetValue, dto.CoverageAmount, riskScore);
+
+            // Fetch policy product for tenure
+            var policyProduct = await _policyProductRepo.GetByIdAsync(dto.PolicyProductId);
+            DateTime startDate = dto.StartDate;
+            DateTime endDate = startDate.AddMonths(policyProduct?.TenureMonths ?? 12);
 
             var application = PolicyApplication.Create(
      customerId,
@@ -118,7 +152,9 @@ namespace Application.Services
 
      riskScore,
      premium,
-     riskScore >= 80
+     riskScore >= 80,
+     startDate,
+     endDate
  );
 
             await _applicationRepo.AddAsync(application);
@@ -135,22 +171,37 @@ namespace Application.Services
         public async Task<IEnumerable<object>> GetCustomerApplicationsAsync(int customerId)
         {
             var applications = await _applicationRepo.GetByCustomerIdAsync(customerId);
+
+            // Include document metadata via repository for each app
+            var appIds = applications.Select(a => a.Id).ToList();
+            var docList = await _documentRepo.GetByApplicationIdsAsync(appIds);
+            var docs = docList.ToDictionary(d => d.PolicyApplicationId);
             
-            return applications.Select(app => new
+            return applications.Select(app =>
             {
-                app.Id,
-                app.PolicyProductId,
-                app.AssetType,
-                app.AssetValue,
-                app.City,
-                app.State,
-                app.ZipCode,
-                app.CoverageAmount,
-                app.CalculatedPremium,
-                app.RiskScore,
-                Status = app.Status.ToString(),
-                app.SubmittedAt,
-                app.ReviewedAt
+                docs.TryGetValue(app.Id, out var doc);
+                return (object)new
+                {
+                    app.Id,
+                    ApplicationNumber = $"APP-{app.Id}",
+                    ProductName = app.PolicyProduct?.Name ?? "N/A",
+                    app.PolicyProductId,
+                    app.AssetType,
+                    app.AssetValue,
+                    app.City,
+                    app.State,
+                    app.ZipCode,
+                    app.CoverageAmount,
+                    app.CalculatedPremium,
+                    app.RiskScore,
+                    Status = app.Status.ToString(),
+                    app.RejectionReason,
+                    app.SubmittedAt,
+                    app.ReviewedAt,
+                    DocumentId = doc?.Id,
+                    DocumentFileName = doc?.FileName,
+                    DocumentContentType = doc?.ContentType
+                };
             });
         }
 
@@ -195,44 +246,24 @@ namespace Application.Services
             if (application == null)
                 throw new Exception("Application not found");
 
-            // Approve the application
+            // Approve the application (Sets status to AgentApproved)
             application.Approve(agentId);
             await _applicationRepo.SaveChangesAsync();
-
-            // Create a Policy from the approved application
-            var policyProduct = await _policyProductRepo.GetByIdAsync(application.PolicyProductId);
-            if (policyProduct == null)
-                throw new Exception("Policy product not found");
-
-            // Generate unique policy number
-            var policyNumber = $"POL-{DateTime.Now:yyyyMMdd}-{application.Id:D6}";
-
-            // Create the policy
-            var policy = new Policy(
-                customerId: application.CustomerId,
-                applicationId: application.Id,
-                policyNumber: policyNumber,
-                premiumAmount: application.CalculatedPremium,
-                coverageAmount: application.CoverageAmount,
-                startDate: DateTime.UtcNow,
-                endDate: DateTime.UtcNow.AddMonths(policyProduct.TenureMonths)
-            );
-
-            await _policyRepo.AddAsync(policy);
-            await _policyRepo.SaveChangesAsync();
+            
+            // Note: Policy creation is deferred until customer pays.
         }
 
         // ==============================
         // REJECT
         // ==============================
-        public async Task RejectApplicationAsync(int applicationId, int agentId)
+        public async Task RejectApplicationAsync(int applicationId, int agentId, string reason)
         {
             var application = await _applicationRepo.GetByIdAsync(applicationId);
 
             if (application == null)
                 throw new Exception("Application not found");
 
-            application.Reject(agentId);
+            application.Reject(agentId, reason);
 
             await _applicationRepo.SaveChangesAsync();
         }

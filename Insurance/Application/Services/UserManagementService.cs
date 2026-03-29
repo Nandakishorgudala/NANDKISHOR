@@ -1,4 +1,4 @@
-﻿using Application.Interfaces;
+using Application.Interfaces;
 using Insurance.Domain.Entities;
 using Insurance.Application.Interfaces;
 using Insurance.Domain.Enums;
@@ -92,6 +92,52 @@ namespace Application.Services
 
             await _agentRepository.AddAsync(agent);
             await _agentRepository.SaveChangesAsync();
+        }
+
+        public async Task ToggleAgentStatusAsync(int agentId)
+        {
+            var agent = await _agentRepository.GetByIdAsync(agentId);
+            if (agent == null) throw new Exception("Agent not found");
+
+            var user = await _userRepository.GetByIdAsync(agent.UserId);
+            if (user == null) throw new Exception("Associated user not found");
+
+            if (agent.IsActive)
+            {
+                agent.Deactivate();
+                user.Deactivate();
+            }
+            else
+            {
+                agent.Activate();
+                user.Activate();
+            }
+
+            await _userRepository.UpdateAsync(user);
+            await _agentRepository.SaveChangesAsync();
+        }
+
+        public async Task ToggleClaimsOfficerStatusAsync(int officerId)
+        {
+            var officer = await _claimsOfficerRepository.GetByIdAsync(officerId);
+            if (officer == null) throw new Exception("Claims Officer not found");
+
+            var user = await _userRepository.GetByIdAsync(officer.UserId);
+            if (user == null) throw new Exception("Associated user not found");
+
+            if (officer.IsActive)
+            {
+                officer.Deactivate();
+                user.Deactivate();
+            }
+            else
+            {
+                officer.Activate();
+                user.Activate();
+            }
+
+            await _userRepository.UpdateAsync(user);
+            await _claimsOfficerRepository.SaveChangesAsync();
         }
     }
 }

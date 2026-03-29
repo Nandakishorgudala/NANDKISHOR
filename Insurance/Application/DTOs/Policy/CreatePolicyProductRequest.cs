@@ -10,6 +10,6 @@
         public decimal BasePremium { get; set; }
         public decimal CoverageAmount { get; set; }
         public int TenureMonths { get; set; }
-        public int ClaimLimit { get; set; }
+        public bool? IsActive { get; set; }
     }
 }

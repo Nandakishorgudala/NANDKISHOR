@@ -58,15 +58,18 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       // Get current URL to pass as 'from' parameter
       const currentUrl = router.url;
 
-      // Navigate to error page with error details
-      router.navigate(['/error'], {
-        queryParams: {
-          code: statusCode,
-          message: errorMessage,
-          traceId: traceId,
-          from: currentUrl
-        }
-      });
+      // Navigate to error page ONLY for critical errors (not 400/401/409/422 which are handled by components)
+      const skipRedirectStatuses = [400, 401, 409, 422];
+      if (!skipRedirectStatuses.includes(error.status)) {
+        router.navigate(['/error'], {
+          queryParams: {
+            code: statusCode,
+            message: errorMessage,
+            traceId: traceId,
+            from: currentUrl
+          }
+        });
+      }
 
       // Return error for component to handle if needed
       return throwError(() => ({

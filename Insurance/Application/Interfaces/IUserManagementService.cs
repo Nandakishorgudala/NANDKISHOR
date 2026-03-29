@@ -1,4 +1,4 @@
-﻿using Insurance.Application.DTOs.Admin;
+using Insurance.Application.DTOs.Admin;
 using Insurance.Application.DTOs.Agent;
 
 namespace Application.Interfaces
@@ -7,5 +7,7 @@ namespace Application.Interfaces
     {
         Task CreateClaimsOfficerAsync(CreateClaimsOfficerDto dto);
         Task CreateAgentAsync(CreateAgentDto dto);
+        Task ToggleAgentStatusAsync(int agentId);
+        Task ToggleClaimsOfficerStatusAsync(int officerId);
     }
 }

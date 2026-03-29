@@ -6,8 +6,11 @@ namespace Application.DTOs.Policy
         public int CustomerId { get; set; }
         public string CustomerName { get; set; }
         public string PolicyNumber { get; set; }
+        public string PolicyName { get; set; }
         public decimal PremiumAmount { get; set; }
         public decimal CoverageAmount { get; set; }
+        public decimal TotalCoverageAmount { get; set; }
+        public decimal RemainingCoverageAmount { get; set; }
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
         public string Status { get; set; }

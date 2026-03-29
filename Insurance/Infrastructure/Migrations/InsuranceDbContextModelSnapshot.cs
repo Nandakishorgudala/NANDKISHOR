@@ -57,6 +57,96 @@ namespace Infrastructure.Migrations
                     b.ToTable("Agents");
                 });
 
+            modelBuilder.Entity("Insurance.Domain.Entities.ApplicationDocument", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<long>("FileSizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<int?>("PolicyApplicationId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("StoredFileName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UploadedByUserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PolicyApplicationId")
+                        .IsUnique()
+                        .HasFilter("[PolicyApplicationId] IS NOT NULL");
+
+                    b.ToTable("ApplicationDocuments");
+                });
+
+            modelBuilder.Entity("Insurance.Domain.Entities.ClaimDocument", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("FilePath")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<long>("FileSize")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ClaimDocuments");
+                });
+
             modelBuilder.Entity("Insurance.Domain.Entities.Claims", b =>
                 {
                     b.Property<int>("Id")
@@ -82,6 +172,9 @@ namespace Infrastructure.Migrations
                     b.Property<decimal>("DisasterImpactScore")
                         .HasPrecision(5, 2)
                         .HasColumnType("decimal(5,2)");
+
+                    b.Property<int?>("DocumentId")
+                        .HasColumnType("int");
 
                     b.Property<decimal>("EstimatedLossAmount")
                         .HasPrecision(18, 2)
@@ -126,6 +219,8 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("ClaimsOfficerId");
 
+                    b.HasIndex("DocumentId");
+
                     b.HasIndex("PolicyId");
 
                     b.ToTable("Claims");
@@ -164,6 +259,42 @@ namespace Infrastructure.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("ClaimsOfficers");
+                });
+
+            modelBuilder.Entity("Insurance.Domain.Entities.Commission", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AgentId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("EarnedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("PolicyId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AgentId");
+
+                    b.HasIndex("PolicyId");
+
+                    b.ToTable("Commissions");
                 });
 
             modelBuilder.Entity("Insurance.Domain.Entities.Customer", b =>
@@ -214,6 +345,73 @@ namespace Infrastructure.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Customers");
+                });
+
+            modelBuilder.Entity("Insurance.Domain.Entities.Invoice", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("AmountBeforeTax")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("CustomerId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FilePath")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("GeneratedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("GeneratedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("InvoiceNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("RelatedId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RelatedType")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("TaxAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("InvoiceNumber")
+                        .IsUnique();
+
+                    b.ToTable("Invoices");
                 });
 
             modelBuilder.Entity("Insurance.Domain.Entities.Payment", b =>
@@ -299,6 +497,9 @@ namespace Infrastructure.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
+                    b.Property<decimal>("TotalClaimedAmount")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -356,8 +557,17 @@ namespace Infrastructure.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<int?>("DocumentId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<int>("PolicyProductId")
                         .HasColumnType("int");
+
+                    b.Property<string>("RejectionReason")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("RequiresManualReview")
                         .HasColumnType("bit");
@@ -371,6 +581,9 @@ namespace Infrastructure.Migrations
                     b.Property<string>("RiskZone")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("State")
                         .IsRequired()
@@ -500,12 +713,27 @@ namespace Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Insurance.Domain.Entities.ApplicationDocument", b =>
+                {
+                    b.HasOne("Insurance.Domain.Entities.PolicyApplication", "PolicyApplication")
+                        .WithOne("Document")
+                        .HasForeignKey("Insurance.Domain.Entities.ApplicationDocument", "PolicyApplicationId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("PolicyApplication");
+                });
+
             modelBuilder.Entity("Insurance.Domain.Entities.Claims", b =>
                 {
                     b.HasOne("Insurance.Domain.Entities.ClaimsOfficer", "ClaimsOfficer")
                         .WithMany("AssignedClaims")
                         .HasForeignKey("ClaimsOfficerId")
                         .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("Insurance.Domain.Entities.ClaimDocument", "Document")
+                        .WithMany()
+                        .HasForeignKey("DocumentId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("Insurance.Domain.Entities.Policy", "Policy")
                         .WithMany("Claims")
@@ -514,6 +742,8 @@ namespace Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("ClaimsOfficer");
+
+                    b.Navigation("Document");
 
                     b.Navigation("Policy");
                 });
@@ -529,6 +759,25 @@ namespace Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Insurance.Domain.Entities.Commission", b =>
+                {
+                    b.HasOne("Insurance.Domain.Entities.Agent", "Agent")
+                        .WithMany()
+                        .HasForeignKey("AgentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Insurance.Domain.Entities.Policy", "Policy")
+                        .WithMany()
+                        .HasForeignKey("PolicyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Agent");
+
+                    b.Navigation("Policy");
+                });
+
             modelBuilder.Entity("Insurance.Domain.Entities.Customer", b =>
                 {
                     b.HasOne("Insurance.Domain.Entities.User", "User")
@@ -538,6 +787,17 @@ namespace Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Insurance.Domain.Entities.Invoice", b =>
+                {
+                    b.HasOne("Insurance.Domain.Entities.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Customer");
                 });
 
             modelBuilder.Entity("Insurance.Domain.Entities.Payment", b =>
@@ -618,6 +878,11 @@ namespace Infrastructure.Migrations
                     b.Navigation("Claims");
 
                     b.Navigation("Payments");
+                });
+
+            modelBuilder.Entity("Insurance.Domain.Entities.PolicyApplication", b =>
+                {
+                    b.Navigation("Document");
                 });
 #pragma warning restore 612, 618
         }

@@ -1,4 +1,4 @@
-﻿using Insurance.Domain.Common;
+using Insurance.Domain.Common;
 
 namespace Insurance.Domain.Entities
 {
@@ -34,6 +34,12 @@ namespace Insurance.Domain.Entities
         public void Deactivate()
         {
             IsActive = false;
+            SetUpdatedTime();
+        }
+
+        public void Activate()
+        {
+            IsActive = true;
             SetUpdatedTime();
         }
     }

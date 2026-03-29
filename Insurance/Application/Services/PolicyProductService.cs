@@ -46,5 +46,43 @@ namespace Application.Services
             var products = await _repository.GetActiveAsync();
             return _mapper.Map<List<PolicyProductResponse>>(products);
         }
+
+        public async Task<PolicyProductResponse> UpdateAsync(int id, CreatePolicyProductRequest dto)
+        {
+            var product = await _repository.GetByIdAsync(id);
+            if (product == null)
+                throw new Exception("Policy product not found");
+
+            // Update properties
+            product.Update(
+                dto.Name,
+                dto.Description,
+                dto.BasePremium,
+                dto.CoverageAmount,
+                dto.TenureMonths
+            );
+
+            if (dto.IsActive.HasValue)
+            {
+                if (dto.IsActive.Value)
+                    product.Activate();
+                else
+                    product.Deactivate();
+            }
+
+            await _repository.SaveChangesAsync();
+
+            return _mapper.Map<PolicyProductResponse>(product);
+        }
+
+        public async Task DeleteAsync(int id)
+        {
+            var product = await _repository.GetByIdAsync(id);
+            if (product == null)
+                throw new Exception("Policy product not found");
+
+            await _repository.DeleteAsync(product);
+            await _repository.SaveChangesAsync();
+        }
     }
 }

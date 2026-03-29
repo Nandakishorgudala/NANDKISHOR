@@ -25,5 +25,7 @@ namespace Insurance.Application.DTOs.Claim
         [Required]
         [Range(1, double.MaxValue, ErrorMessage = "Claimed amount must be greater than zero")]
         public decimal ClaimedAmount { get; set; }
+
+        public int? DocumentId { get; set; }
     }
 }

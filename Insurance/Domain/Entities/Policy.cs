@@ -17,6 +17,7 @@ namespace Insurance.Domain.Entities
         public string PolicyNumber { get; private set; }
         public decimal PremiumAmount { get; private set; }
         public decimal CoverageAmount { get; private set; }
+        public decimal TotalClaimedAmount { get; private set; }
         public DateTime StartDate { get; private set; }
         public DateTime EndDate { get; private set; }
         public PolicyStatus Status { get; private set; }
@@ -86,6 +87,7 @@ namespace Insurance.Domain.Entities
                 throw new InvalidOperationException("Deduction amount exceeds remaining coverage.");
 
             CoverageAmount -= amount;
+            TotalClaimedAmount += amount;
             SetUpdatedTime();
         }
     }

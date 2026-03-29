@@ -45,6 +45,11 @@ namespace Infrastructure.Repositories
                 .ToListAsync();
         }
 
+        public async Task DeleteAsync(PolicyProduct product)
+        {
+            _context.PolicyProducts.Remove(product);
+        }
+
         public async Task SaveChangesAsync()
         {
             await _context.SaveChangesAsync();

@@ -1,4 +1,4 @@
-﻿using Insurance.Application.DTOs.Admin;
+using Insurance.Application.DTOs.Admin;
 using Insurance.Application.DTOs.Agent;
 using Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -19,6 +19,8 @@ namespace API.Controllers
         private readonly IAgentRepository _agentRepo;
         private readonly IClaimsOfficerRepository _officerRepo;
         private readonly IClaimsRepository _claimsRepo;
+        private readonly ICommissionRepository _commissionRepo;
+        private readonly ICustomerService _customerService;
 
         public AdminController(
             IUserManagementService userService,
@@ -26,7 +28,9 @@ namespace API.Controllers
             IPolicyRepository policyRepo,
             IAgentRepository agentRepo,
             IClaimsOfficerRepository officerRepo,
-            IClaimsRepository claimsRepo)
+            IClaimsRepository claimsRepo,
+            ICommissionRepository commissionRepo,
+            ICustomerService customerService)
         {
             _userService = userService;
             _applicationRepo = applicationRepo;
@@ -34,6 +38,55 @@ namespace API.Controllers
             _agentRepo = agentRepo;
             _officerRepo = officerRepo;
             _claimsRepo = claimsRepo;
+            _commissionRepo = commissionRepo;
+            _customerService = customerService;
+        }
+
+        [HttpPost("staff")]
+        public async Task<IActionResult> CreateStaff([FromBody] CreateStaffDto dto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            try
+            {
+                if (dto.Role?.ToLower() == "agent")
+                {
+                    var agentDto = new CreateAgentDto
+                    {
+                        FullName = dto.FullName,
+                        Email = dto.Email,
+                        Password = dto.Password
+                    };
+                    await _userService.CreateAgentAsync(agentDto);
+                    return Created("", new { message = "Agent created successfully" });
+                }
+                else if (dto.Role?.ToLower() == "claimsofficer")
+                {
+                    var officerDto = new CreateClaimsOfficerDto
+                    {
+                        FullName = dto.FullName,
+                        Email = dto.Email,
+                        Password = dto.Password
+                    };
+                    await _userService.CreateClaimsOfficerAsync(officerDto);
+                    return Created("", new { message = "Claims Officer created successfully" });
+                }
+                else
+                {
+                    return BadRequest(new { message = "Invalid role specified. Must be 'agent' or 'claimsOfficer'." });
+                }
+            }
+            catch (Exception ex)
+            {
+                if (ex.Message.Contains("User already exists", StringComparison.OrdinalIgnoreCase))
+                {
+                    return Conflict(new { message = "Email already exists" });
+                }
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         [HttpPost("create-claims-officer")]
@@ -66,6 +119,13 @@ namespace API.Controllers
             }
         }
 
+        [HttpGet("customers")]
+        public async Task<IActionResult> GetAllCustomers()
+        {
+            var customers = await _customerService.GetAllCustomersAsync();
+            return Ok(customers);
+        }
+
         [HttpGet("applications")]
         public async Task<IActionResult> GetAllApplications()
         {
@@ -80,6 +140,7 @@ namespace API.Controllers
                 app.AgentId,
                 AgentName = app.Agent?.User?.FullName,
                 AgentEmail = app.Agent?.User?.Email,
+                PolicyProductName = app.PolicyProduct?.Name ?? "N/A",
                 app.AssetType,
                 app.AssetValue,
                 app.City,
@@ -107,6 +168,7 @@ namespace API.Controllers
                 policy.CustomerId,
                 CustomerName = policy.Customer?.User?.FullName ?? "Unknown",
                 CustomerEmail = policy.Customer?.User?.Email ?? "N/A",
+                AgentId = policy.Application?.AgentId,
                 AgentName = policy.Application?.Agent?.User?.FullName,
                 AgentEmail = policy.Application?.Agent?.User?.Email,
                 policy.CoverageAmount,
@@ -132,6 +194,7 @@ namespace API.Controllers
             var agents = await _agentRepo.GetAllWithDetailsAsync();
             var allApplications = await _applicationRepo.GetAllAsync();
             var allPolicies = await _policyRepo.GetAllAsync();
+            var allCommissions = await _commissionRepo.GetAllAsync();
 
             var result = agents.Select(agent => new
             {
@@ -140,8 +203,10 @@ namespace API.Controllers
                 email = agent.User?.Email ?? "N/A",
                 totalApplications = allApplications.Count(a => a.AgentId == agent.Id),
                 approvedApplications = allApplications.Count(a => a.AgentId == agent.Id && a.Status == Insurance.Domain.Enums.ApplicationStatus.Approved),
-                pendingApplications = allApplications.Count(a => a.AgentId == agent.Id && (a.Status == Insurance.Domain.Enums.ApplicationStatus.Pending || a.Status == Insurance.Domain.Enums.ApplicationStatus.Assigned)),
-                activePolicies = allPolicies.Count(p => p.Application.AgentId == agent.Id && p.Status == Insurance.Domain.Enums.PolicyStatus.Active)
+                pendingApplications = allApplications.Count(a => a.AgentId == agent.Id && (a.Status == Insurance.Domain.Enums.ApplicationStatus.Pending || a.Status == Insurance.Domain.Enums.ApplicationStatus.Assigned || a.Status == Insurance.Domain.Enums.ApplicationStatus.AgentApproved)),
+                activePolicies = allPolicies.Count(p => p.Application.AgentId == agent.Id && p.Status == Insurance.Domain.Enums.PolicyStatus.Active),
+                totalCommissions = allCommissions.Where(c => c.AgentId == agent.Id).Sum(c => c.Amount),
+                isActive = agent.IsActive
             });
 
             return Ok(result);
@@ -188,6 +253,35 @@ namespace API.Controllers
             }
         }
 
+        [HttpPost("assign-agent-to-policy")]
+        public async Task<IActionResult> AssignAgentToPolicy([FromBody] AssignAgentToPolicyRequest request)
+        {
+            try
+            {
+                var policy = await _policyRepo.GetByIdAsync(request.PolicyId);
+                if (policy == null)
+                    return NotFound(new { message = "Policy not found" });
+
+                var agent = await _agentRepo.GetByIdAsync(request.AgentId);
+                if (agent == null)
+                    return NotFound(new { message = "Agent not found" });
+
+                // Get the associated application and assign the agent
+                var application = await _applicationRepo.GetByIdAsync(policy.ApplicationId);
+                if (application == null)
+                    return NotFound(new { message = "Associated application not found" });
+
+                application.AssignAgent(request.AgentId);
+                await _applicationRepo.SaveChangesAsync();
+
+                return Ok(new { message = "Agent assigned to policy successfully" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         [HttpGet("officer-performance")]
         public async Task<IActionResult> GetOfficerPerformance()
         {
@@ -205,7 +299,8 @@ namespace API.Controllers
                 pendingClaims = allClaims.Count(c => c.ClaimsOfficerId == officer.Id && c.Status == Insurance.Domain.Enums.ClaimStatus.Submitted),
                 underReviewClaims = allClaims.Count(c => c.ClaimsOfficerId == officer.Id && c.Status == Insurance.Domain.Enums.ClaimStatus.UnderReview),
                 approvedClaims = allClaims.Count(c => c.ClaimsOfficerId == officer.Id && c.Status == Insurance.Domain.Enums.ClaimStatus.Approved),
-                rejectedClaims = allClaims.Count(c => c.ClaimsOfficerId == officer.Id && c.Status == Insurance.Domain.Enums.ClaimStatus.Rejected)
+                rejectedClaims = allClaims.Count(c => c.ClaimsOfficerId == officer.Id && c.Status == Insurance.Domain.Enums.ClaimStatus.Rejected),
+                isActive = officer.IsActive
             });
 
             return Ok(result);
@@ -230,25 +325,32 @@ namespace API.Controllers
         [HttpGet("unassigned-claims")]
         public async Task<IActionResult> GetUnassignedClaims()
         {
-            var allClaims = await _claimsRepo.GetAllAsync();
-            var unassignedClaims = allClaims.Where(c => c.ClaimsOfficerId == null).ToList();
+            var unassignedClaims = await _claimsRepo.GetUnassignedClaimsAsync();
 
             var result = new List<object>();
             foreach (var claim in unassignedClaims)
             {
-                var policy = await _policyRepo.GetByIdAsync(claim.PolicyId);
-                
+                var policy = await _policyRepo.GetByIdWithDetailsAsync(claim.PolicyId);
+
+                var customerName = policy?.Customer?.User?.FullName ?? "Unknown";
+                var policyProductName = policy?.Application?.PolicyProduct?.Name ?? policy?.PolicyNumber ?? "N/A";
+                var agentName = policy?.Application?.Agent?.User?.FullName;
+
                 result.Add(new
                 {
                     id = claim.Id,
                     policyId = claim.PolicyId,
                     policyNumber = policy?.PolicyNumber ?? "N/A",
+                    policyProductName = policyProductName,
                     customerId = policy?.CustomerId,
+                    customerName = customerName,
+                    agentName = agentName,
                     incidentDate = claim.IncidentDate,
                     incidentLocation = claim.IncidentLocation,
                     incidentZipCode = claim.IncidentZipCode,
                     incidentDescription = claim.IncidentDescription,
                     claimedAmount = claim.ClaimedAmount,
+                    totalCoverage = (policy?.Application?.CoverageAmount ?? 0) - (policy?.Claims?.Where(c => c.Status == Insurance.Domain.Enums.ClaimStatus.Approved || c.Status == Insurance.Domain.Enums.ClaimStatus.Settled).Sum(c => c.ApprovedAmount) ?? 0),
                     status = claim.Status.ToString(),
                     createdAt = claim.CreatedAt
                 });
@@ -274,11 +376,45 @@ namespace API.Controllers
 
             return Ok(new { message = "Claims officer assigned successfully" });
         }
+
+        [HttpPut("agents/{id}/toggle-status")]
+        public async Task<IActionResult> ToggleAgentStatus(int id)
+        {
+            try
+            {
+                await _userService.ToggleAgentStatusAsync(id);
+                return Ok(new { message = "Agent status toggled successfully" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpPut("officers/{id}/toggle-status")]
+        public async Task<IActionResult> ToggleOfficerStatus(int id)
+        {
+            try
+            {
+                await _userService.ToggleClaimsOfficerStatusAsync(id);
+                return Ok(new { message = "Claims officer status toggled successfully" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
     }
 
     public class AssignAgentRequest
     {
         public int ApplicationId { get; set; }
+        public int AgentId { get; set; }
+    }
+
+    public class AssignAgentToPolicyRequest
+    {
+        public int PolicyId { get; set; }
         public int AgentId { get; set; }
     }
 

@@ -14,7 +14,7 @@ namespace Application.Interfaces
         Task<IEnumerable<object>> GetCustomerApplicationsAsync(int customerId);
         Task AssignAgentAsync(int applicationId);
         Task ApproveApplicationAsync(int applicationId, int agentId);
-        Task RejectApplicationAsync(int applicationId, int agentId);
+        Task RejectApplicationAsync(int applicationId, int agentId, string reason);
     }
 
 

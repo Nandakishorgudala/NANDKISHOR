@@ -39,7 +39,9 @@ export class AuthService {
       id: response.id, 
       email: response.email, 
       fullName: response.fullName,
-      role: response.role as any 
+      role: response.role as any,
+      agentId: response.agentId,
+      claimsOfficerId: response.claimsOfficerId
     };
     localStorage.setItem('user', JSON.stringify(user));
     this.currentUser.set(user);

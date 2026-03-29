@@ -7,6 +7,11 @@ namespace Application.DTOs.Policy
         [Required]
         public int PolicyProductId { get; set; }
 
+        /// <summary>ID of the document uploaded via POST /api/documents/upload.</summary>
+        [Required]
+        [Range(1, int.MaxValue, ErrorMessage = "A valid document must be uploaded before submitting.")]
+        public int DocumentId { get; set; }
+
         [Required]
         [Range(18, 100)]
         public int CustomerAge { get; set; }
@@ -37,5 +42,11 @@ namespace Application.DTOs.Policy
 
         [Range(0, double.MaxValue)]
         public decimal Deductible { get; set; }
+
+        [Required]
+        public DateTime StartDate { get; set; }
+
+        [Range(0, double.MaxValue)]
+        public decimal? RequestedCoverage { get; set; }
     }
 }

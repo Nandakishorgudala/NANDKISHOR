@@ -1,4 +1,4 @@
-﻿using Insurance.Domain.Entities;
+using Insurance.Domain.Entities;
 
 namespace Application.Interfaces
 {

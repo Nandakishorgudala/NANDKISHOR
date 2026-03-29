@@ -1,4 +1,4 @@
-﻿using Insurance.Application.Interfaces;
+using Insurance.Application.Interfaces;
 using Insurance.Infrastructure.Security;
 using API.Middlewares;
 using AutoMapper;
@@ -14,7 +14,6 @@ using Infrastructure.Persistence;
 using Application.Interfaces;
 using Application.Services;
 using Infrastructure.Repositories;
-using Infrastructure.Persistence;
 
 namespace API
 {
@@ -27,6 +26,7 @@ namespace API
             // Add services to the container.
 
             builder.Services.AddControllers();
+            builder.Services.AddHttpClient();
    
             // Add CORS
             builder.Services.AddCors(options =>
@@ -60,6 +60,11 @@ namespace API
             builder.Services.AddScoped<IPolicyRepository, PolicyRepository>();
             builder.Services.AddScoped<IPolicyService, PolicyService>();
 
+            // Payment and Commission Management
+            builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
+            builder.Services.AddScoped<ICommissionRepository, CommissionRepository>();
+            builder.Services.AddScoped<IPaymentService, PaymentService>();
+
             // User Management
             builder.Services.AddScoped<IUserManagementService, UserManagementService>();
             builder.Services.AddScoped<IAgentRepository, AgentRepository>();
@@ -73,9 +78,23 @@ namespace API
             builder.Services.AddScoped<IClaimsRepository, ClaimsRepository>();
             builder.Services.AddScoped<IClaimsService, ClaimsService>();
 
+            // Invoices Management
+            builder.Services.AddScoped<IInvoiceRepository, InvoiceRepository>();
+            builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 
+            // Chatbot Management
+            builder.Services.AddScoped<IChatService, ChatService>();
 
+            // Document Upload & Verification
+            builder.Services.AddScoped<IApplicationDocumentRepository, ApplicationDocumentRepository>();
+            builder.Services.AddScoped<IDocumentService, Insurance.Infrastructure.Services.DocumentService>();
+            builder.Services.AddScoped<IVerificationService, VerificationService>();
 
+            // Allow large multipart uploads (50 MB hard limit)
+            builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+            {
+                options.MultipartBodyLengthLimit = 52_428_800; // 50 MB
+            });
 
             //enable JWT Authentication Middleware 
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -127,12 +146,6 @@ namespace API
                     });
             });
 
-
-
-
-           
-
-
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
@@ -164,9 +177,7 @@ namespace API
 
             app.UseAuthorization();
 
-
             app.MapControllers();
-
 
             //call seeder in async 
 
@@ -177,7 +188,7 @@ namespace API
                 var context = services.GetRequiredService<InsuranceDbContext>();
                 var passwordHasher = services.GetRequiredService<IPasswordHasher>();
 
-                await DataSeeder.SeedAdminAsync(context, passwordHasher);
+                // await DataSeeder.SeedAdminAsync(context, passwordHasher);
             }
 
             app.Run();

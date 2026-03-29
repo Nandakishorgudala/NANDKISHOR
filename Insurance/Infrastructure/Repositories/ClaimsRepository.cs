@@ -20,6 +20,7 @@ namespace Infrastructure.Repositories
             return await _context.Set<Claims>()
                 .Include(c => c.Policy)
                 .Include(c => c.ClaimsOfficer)
+                .Include(c => c.Document)
                 .FirstOrDefaultAsync(c => c.Id == id);
         }
 
@@ -43,6 +44,25 @@ namespace Infrastructure.Repositories
                 .ToListAsync();
         }
 
+        public async Task<IEnumerable<Claims>> GetByAgentIdAsync(int agentId)
+        {
+            return await _context.Set<Claims>()
+                .Include(c => c.Policy)
+                .ThenInclude(p => p.Application)
+                .Where(c => c.Policy.Application.AgentId == agentId)
+                .OrderByDescending(c => c.CreatedAt)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<Claims>> GetByCustomerIdAsync(int customerId)
+        {
+            return await _context.Set<Claims>()
+                .Include(c => c.Policy)
+                .Where(c => c.Policy.CustomerId == customerId)
+                .OrderByDescending(c => c.CreatedAt)
+                .ToListAsync();
+        }
+
         public async Task<IEnumerable<Claims>> GetAllAsync()
         {
             return await _context.Set<Claims>()
@@ -59,6 +79,21 @@ namespace Infrastructure.Repositories
                 .Where(c => c.Status == ClaimStatus.Submitted || c.Status == ClaimStatus.UnderReview)
                 .OrderBy(c => c.CreatedAt)
                 .ToListAsync();
+        }
+
+        public async Task<IEnumerable<Claims>> GetUnassignedClaimsAsync()
+        {
+            return await _context.Set<Claims>()
+                .Include(c => c.Policy)
+                .Where(c => c.ClaimsOfficerId == null)
+                .OrderBy(c => c.CreatedAt)
+                .ToListAsync();
+        }
+
+        public async Task<int> GetCountByZipCodeAsync(string zipCode)
+        {
+            return await _context.Set<Claims>()
+                .CountAsync(c => c.IncidentZipCode == zipCode);
         }
 
         public async Task AddAsync(Claims claim)

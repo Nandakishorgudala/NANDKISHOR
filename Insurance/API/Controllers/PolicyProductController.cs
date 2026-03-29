@@ -37,5 +37,35 @@ namespace API.Controllers
         {
             return Ok(await _service.GetActiveAsync());
         }
+
+        [Authorize(Roles = "Admin")]
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Update(int id, CreatePolicyProductRequest dto)
+        {
+            try
+            {
+                var result = await _service.UpdateAsync(id, dto);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            try
+            {
+                await _service.DeleteAsync(id);
+                return Ok(new { message = "Policy product deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
     }
 }

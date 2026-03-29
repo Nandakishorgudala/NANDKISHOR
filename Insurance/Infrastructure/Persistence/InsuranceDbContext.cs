@@ -1,4 +1,4 @@
-﻿using Insurance.Domain.Entities;
+using Insurance.Domain.Entities;
 using Insurance.Domain.Common;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,8 +20,10 @@ namespace Insurance.Infrastructure.Persistence
         public DbSet<Policy> Policies => Set<Policy>();
         public DbSet<Claims> Claims => Set<Claims>();
         public DbSet<Payment> Payments => Set<Payment>();
-
-
+        public DbSet<ApplicationDocument> ApplicationDocuments => Set<ApplicationDocument>();
+        public DbSet<Commission> Commissions => Set<Commission>();
+        public DbSet<ClaimDocument> ClaimDocuments => Set<ClaimDocument>();
+        public DbSet<Invoice> Invoices => Set<Invoice>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -39,11 +41,28 @@ namespace Insurance.Infrastructure.Persistence
                 entity.Property(p => p.Deductible).HasPrecision(18, 2);
             });
 
+            // ApplicationDocument – one-to-many/optional relationship with PolicyApplication
+            modelBuilder.Entity<ApplicationDocument>(entity =>
+            {
+                entity.HasKey(d => d.Id);
+                entity.Property(d => d.FileName).IsRequired().HasMaxLength(500);
+                entity.Property(d => d.StoredFileName).IsRequired().HasMaxLength(500);
+                entity.Property(d => d.ContentType).IsRequired().HasMaxLength(100);
+
+                // Optional FK – null until linked at application submission
+                entity.HasOne(d => d.PolicyApplication)
+                      .WithOne(pa => pa.Document)
+                      .HasForeignKey<ApplicationDocument>(d => d.PolicyApplicationId)
+                      .IsRequired(false)
+                      .OnDelete(DeleteBehavior.SetNull);
+            });
+
             // Policy configuration
             modelBuilder.Entity<Policy>(entity =>
             {
                 entity.Property(p => p.PremiumAmount).HasPrecision(18, 2);
                 entity.Property(p => p.CoverageAmount).HasPrecision(18, 2);
+                entity.Property(p => p.TotalClaimedAmount).HasPrecision(18, 2);
                 entity.HasIndex(p => p.PolicyNumber).IsUnique();
             });
 
@@ -56,6 +75,21 @@ namespace Insurance.Infrastructure.Persistence
                 entity.Property(c => c.DisasterImpactScore).HasPrecision(5, 2);
                 entity.Property(c => c.FraudRiskScore).HasPrecision(5, 2);
                 entity.Property(c => c.PropertyLossPercentage).HasPrecision(5, 2);
+
+                entity.HasOne(c => c.Document)
+                      .WithMany()
+                      .HasForeignKey(c => c.DocumentId)
+                      .IsRequired(false)
+                      .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // ClaimDocument configuration
+            modelBuilder.Entity<ClaimDocument>(entity =>
+            {
+                entity.HasKey(d => d.Id);
+                entity.Property(d => d.FileName).IsRequired().HasMaxLength(500);
+                entity.Property(d => d.ContentType).IsRequired().HasMaxLength(100);
+                entity.Property(d => d.FilePath).IsRequired().HasMaxLength(1000);
             });
 
             // Payment configuration
@@ -64,11 +98,26 @@ namespace Insurance.Infrastructure.Persistence
                 entity.Property(p => p.Amount).HasPrecision(18, 2);
             });
 
+            // Commission configuration
+            modelBuilder.Entity<Commission>(entity =>
+            {
+                entity.Property(c => c.Amount).HasPrecision(18, 2);
+            });
+
             // PolicyProduct configuration
             modelBuilder.Entity<PolicyProduct>(entity =>
             {
                 entity.Property(p => p.BasePremium).HasPrecision(18, 2);
                 entity.Property(p => p.CoverageAmount).HasPrecision(18, 2);
+            });
+
+            // Invoice configuration
+            modelBuilder.Entity<Invoice>(entity =>
+            {
+                entity.Property(i => i.AmountBeforeTax).HasPrecision(18, 2);
+                entity.Property(i => i.TaxAmount).HasPrecision(18, 2);
+                entity.Property(i => i.TotalAmount).HasPrecision(18, 2);
+                entity.HasIndex(i => i.InvoiceNumber).IsUnique();
             });
         }
 

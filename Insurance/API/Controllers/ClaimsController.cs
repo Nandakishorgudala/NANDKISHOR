@@ -131,6 +131,28 @@ namespace API.Controllers
             var response = await _claimsService.RejectClaimAsync(officer.Id, dto);
             return Ok(response);
         }
+
+        [HttpPost("{id}/accept")]
+        [Authorize(Roles = "Customer")]
+        public async Task<IActionResult> AcceptClaim(int id)
+        {
+            var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
+            var customer = await _customerRepository.GetByUserIdAsync(userId);
+            
+            if (customer == null)
+                return BadRequest("Customer profile not found.");
+
+            var response = await _claimsService.AcceptClaimAsync(customer.Id, id);
+            return Ok(response);
+        }
+
+        [HttpPost("{id}/analyze")]
+        [Authorize(Roles = "ClaimsOfficer")]
+        public async Task<IActionResult> AnalyzeClaim(int id)
+        {
+            var response = await _claimsService.AnalyzeClaimAsync(id);
+            return Ok(response);
+        }
     }
 
     public class AssignClaimDto

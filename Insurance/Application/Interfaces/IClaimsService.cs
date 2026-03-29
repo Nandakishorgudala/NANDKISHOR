@@ -13,5 +13,7 @@ namespace Application.Interfaces
         Task<ClaimResponse> ReviewClaimAsync(int officerId, ReviewClaimDto dto);
         Task<ClaimResponse> ApproveClaimAsync(int officerId, ApproveClaimDto dto);
         Task<ClaimResponse> RejectClaimAsync(int officerId, RejectClaimDto dto);
+        Task<ClaimResponse> AcceptClaimAsync(int customerId, int claimId);
+        Task<ClaimAnalysisResultDto> AnalyzeClaimAsync(int claimId);
     }
 }

@@ -7,6 +7,7 @@
         UnderReview = 3,
         Approved = 4,
         Rejected = 5,
-        Pending = 6
+        Pending = 6,
+        AgentApproved = 7
     }
 }

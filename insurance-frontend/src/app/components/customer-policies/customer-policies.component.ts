@@ -33,12 +33,12 @@ import { ApiService } from '../../services/api.service';
                 
                 <div class="space-y-2 mb-4">
                   <div class="flex justify-between">
-                    <span class="text-gray-600">Base Premium:</span>
-                    <span class="font-bold">{{ '$' + policy.basePremium }}</span>
+                    <span class="text-gray-600">Monthly Premium:</span>
+                    <span class="font-bold">{{ '₹' + (policy.basePremium | number:'1.0-0') }}</span>
                   </div>
                   <div class="flex justify-between">
                     <span class="text-gray-600">Coverage:</span>
-                    <span class="font-bold">{{ '$' + policy.coverageAmount }}</span>
+                    <span class="font-bold">{{ '₹' + policy.coverageAmount }}</span>
                   </div>
                   <div class="flex justify-between">
                     <span class="text-gray-600">Tenure:</span>
@@ -125,7 +125,7 @@ import { ApiService } from '../../services/api.service';
               <!-- Asset Details -->
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-sm font-medium mb-1">Asset Value ($) *</label>
+                  <label class="block text-sm font-medium mb-1">Asset Value (₹) *</label>
                   <input type="number" [(ngModel)]="application.assetValue" name="assetValue" required
                     min="1" step="1000" placeholder="250000"
                     class="w-full px-3 py-2 border rounded">
@@ -173,25 +173,58 @@ import { ApiService } from '../../services/api.service';
                   </select>
                 </div>
                 <div>
-                  <label class="block text-sm font-medium mb-1">Deductible ($) *</label>
+                  <label class="block text-sm font-medium mb-1">Deductible (₹) *</label>
                   <input type="number" [(ngModel)]="application.deductible" name="deductible" required
                     min="0" step="100" placeholder="5000"
                     class="w-full px-3 py-2 border rounded">
                 </div>
               </div>
 
+              <!-- Manual Coverage Override (New Feature) -->
+              <div class="bg-purple-50 p-4 rounded-lg border border-purple-100">
+                <label class="block text-sm font-bold text-purple-800 mb-1">
+                  Specific Coverage Amount (Optional)
+                </label>
+                <p class="text-xs text-purple-600 mb-3">
+                  Enter a specific amount (e.g. 15,00,000) to override the automated estimation.
+                </p>
+                <div class="relative">
+                  <span class="absolute left-3 top-2 text-purple-400 font-bold">₹</span>
+                  <input type="number" [(ngModel)]="application.requestedCoverage" name="requestedCoverage"
+                    min="0" [max]="application.assetValue || 999999999" step="10000" placeholder="e.g. 1500000"
+                    [class.border-red-500]="application.requestedCoverage > application.assetValue"
+                    class="w-full pl-8 pr-3 py-3 border-2 border-purple-200 rounded-lg focus:border-purple-500 focus:outline-none transition-colors font-bold text-purple-900">
+                </div>
+                @if (application.requestedCoverage > application.assetValue) {
+                  <p class="text-red-600 text-[10px] mt-1 font-bold">
+                    ⚠️ Coverage cannot exceed Asset Value (₹{{ application.assetValue | number }})
+                  </p>
+                }
+              </div>
+
               <!-- Coverage Preview -->
               @if (application.customerAge && application.planType) {
-                <div class="bg-green-50 p-4 rounded-lg">
-                  <h4 class="font-bold mb-2">Estimated Coverage</h4>
-                  <p class="text-sm text-gray-600">
-                    Based on your age ({{ application.customerAge }}) and {{ application.planType }} plan:
-                  </p>
-                  <p class="text-2xl font-bold text-green-700 mt-2">
+                <div [class]="application.requestedCoverage > 0 ? 'bg-purple-100 border-purple-200' : 'bg-green-50 border-green-100'" 
+                     class="p-4 rounded-lg border">
+                  <div class="flex justify-between items-start">
+                    <div>
+                      <h4 class="font-bold mb-1">Estimated Coverage</h4>
+                      <p class="text-sm text-gray-600">
+                        {{ application.requestedCoverage > 0 ? 'Using manual override amount' : 'Based on age and plan multipliers' }}
+                      </p>
+                    </div>
+                    @if (application.requestedCoverage > 0) {
+                      <span class="bg-purple-600 text-white text-[10px] font-black px-2 py-1 rounded uppercase tracking-wider">
+                        Manual Override
+                      </span>
+                    }
+                  </div>
+                  <p [class]="application.requestedCoverage > 0 ? 'text-purple-700' : 'text-green-700'"
+                     class="text-3xl font-black mt-2">
                     {{ calculateEstimatedCoverage() }}
                   </p>
-                  <p class="text-xs text-gray-500 mt-1">
-                    * Final coverage will be calculated by our system
+                  <p class="text-xs text-gray-500 mt-1 italic">
+                    * Final premium calculation will be based on this coverage amount.
                   </p>
                 </div>
               }
@@ -202,7 +235,7 @@ import { ApiService } from '../../services/api.service';
                   class="flex-1 bg-gray-300 text-gray-700 py-3 rounded hover:bg-gray-400">
                   Cancel
                 </button>
-                <button type="submit" [disabled]="loading()"
+                <button type="submit" [disabled]="loading() || (application.requestedCoverage > application.assetValue)"
                   class="flex-1 bg-primary text-white py-3 rounded hover:bg-blue-700 disabled:opacity-50">
                   {{ loading() ? 'Submitting...' : 'Submit Application' }}
                 </button>
@@ -235,7 +268,8 @@ export class CustomerPoliciesComponent implements OnInit {
     city: '',
     zipCode: '',
     riskZone: '',
-    deductible: null
+    deductible: null,
+    requestedCoverage: null
   };
 
   constructor(private apiService: ApiService) {}
@@ -254,9 +288,17 @@ export class CustomerPoliciesComponent implements OnInit {
   selectPolicy(policy: any): void {
     this.selectedPolicy.set(policy);
     this.application.policyProductId = policy.id;
+    // Set default coverage to the plan's base coverage as requested
+    this.application.requestedCoverage = policy.coverageAmount;
   }
 
   calculateEstimatedCoverage(): string {
+    // Priority 1: Manual Override
+    if (this.application.requestedCoverage && this.application.requestedCoverage > 0) {
+      return '₹' + Number(this.application.requestedCoverage).toLocaleString();
+    }
+
+    // Priority 2: Automated Calculation
     if (!this.application.assetValue) return 'Enter asset value';
     
     const baseCoverage = this.application.assetValue * 0.8;
@@ -271,7 +313,7 @@ export class CustomerPoliciesComponent implements OnInit {
     
     const finalCoverage = baseCoverage * planMultiplier * ageMultiplier;
     
-    return '$' + Math.round(finalCoverage).toLocaleString();
+    return '₹' + Math.round(finalCoverage).toLocaleString();
   }
 
   submitApplication(): void {
@@ -305,7 +347,8 @@ export class CustomerPoliciesComponent implements OnInit {
       city: '',
       zipCode: '',
       riskZone: '',
-      deductible: null
+      deductible: null,
+      requestedCoverage: null
     };
   }
 

@@ -14,6 +14,7 @@ namespace Application.Interfaces
         Task<PolicyProduct?> GetByIdAsync(int id);
         Task<List<PolicyProduct>> GetAllAsync();
         Task<List<PolicyProduct>> GetActiveAsync();
+        Task DeleteAsync(PolicyProduct product);
         Task SaveChangesAsync();
     }
 

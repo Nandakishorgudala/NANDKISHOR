@@ -23,6 +23,10 @@ namespace Insurance.Domain.Entities
         public decimal EstimatedLossAmount { get; private set; }
         public decimal ApprovedAmount { get; private set; }
         
+        // Supporting Document
+        public int? DocumentId { get; private set; }
+        public ClaimDocument? Document { get; private set; }
+        
         // Disaster and Risk Assessment
         public decimal DisasterImpactScore { get; private set; } // 0-1 score based on postal code disaster severity
         public decimal FraudRiskScore { get; private set; } // 0-100 score
@@ -33,7 +37,7 @@ namespace Insurance.Domain.Entities
 
         private Claims() { }
 
-        public Claims(int policyId, DateTime incidentDate, string location, string zipCode, string description, decimal claimedAmount)
+        public Claims(int policyId, DateTime incidentDate, string location, string zipCode, string description, decimal claimedAmount, int? documentId = null)
         {
             if (claimedAmount <= 0)
                 throw new ArgumentException("Claimed amount must be greater than zero.");
@@ -44,6 +48,7 @@ namespace Insurance.Domain.Entities
             IncidentZipCode = zipCode ?? throw new ArgumentNullException(nameof(zipCode));
             IncidentDescription = description;
             ClaimedAmount = claimedAmount;
+            DocumentId = documentId;
             Status = ClaimStatus.Submitted;
 
             SetCreationTime();
@@ -102,8 +107,20 @@ namespace Insurance.Domain.Entities
 
         public void Reject(string reviewNotes)
         {
-            ReviewNotes = reviewNotes ?? "Claim rejected after review.";
+            if (string.IsNullOrWhiteSpace(reviewNotes))
+                throw new ArgumentException("Rejection reason is required.");
+
+            ReviewNotes = reviewNotes;
             Status = ClaimStatus.Rejected;
+            SetUpdatedTime();
+        }
+
+        public void AcceptClaim()
+        {
+            if (Status != ClaimStatus.Approved)
+                throw new InvalidOperationException("Only approved claims can be accepted.");
+
+            Status = ClaimStatus.Settled;
             SetUpdatedTime();
         }
 

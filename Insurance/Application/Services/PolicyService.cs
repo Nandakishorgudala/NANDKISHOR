@@ -60,7 +60,7 @@ namespace Application.Services
             // Determine if manual review is required
             var requiresManualReview = riskScore > 70 || calculatedPremium > 50000;
 
-            var breakdown = $"Base: ${basePremium:F2} × Age({ageFactor}) × Risk Zone({riskZoneFactor}) × Asset Age({assetAgeFactor}) × Coverage({coverageFactor}) × Deductible({deductibleFactor})";
+            var breakdown = $"Base: ₹{basePremium:F2} × Age({ageFactor}) × Risk Zone({riskZoneFactor}) × Asset Age({assetAgeFactor}) × Coverage({coverageFactor}) × Deductible({deductibleFactor})";
 
             return new PremiumCalculationResponse
             {
@@ -226,8 +226,11 @@ namespace Application.Services
                 CustomerId = policy.CustomerId,
                 CustomerName = customer != null ? $"Customer {customer.Id}" : "Unknown",
                 PolicyNumber = policy.PolicyNumber,
+                PolicyName = policy.Application?.PolicyProduct?.Name ?? "N/A",
                 PremiumAmount = policy.PremiumAmount,
                 CoverageAmount = policy.CoverageAmount,
+                TotalCoverageAmount = policy.CoverageAmount + policy.TotalClaimedAmount,
+                RemainingCoverageAmount = policy.CoverageAmount,
                 StartDate = policy.StartDate,
                 EndDate = policy.EndDate,
                 Status = policy.Status.ToString(),

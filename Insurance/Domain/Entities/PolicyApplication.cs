@@ -1,4 +1,4 @@
-﻿using Insurance.Domain.Common;
+using Insurance.Domain.Common;
 using Insurance.Domain.Enums;
 
 namespace Insurance.Domain.Entities
@@ -38,8 +38,17 @@ namespace Insurance.Domain.Entities
         public int RiskScore { get; private set; }
         public bool RequiresManualReview { get; private set; }
 
+        // 🔹 Supporting Document
+        public int? DocumentId { get; private set; }
+        public ApplicationDocument? Document { get; private set; }
+
+        // 🔹 Tenure
+        public DateTime StartDate { get; private set; }
+        public DateTime EndDate { get; private set; }
+
         // 🔹 Workflow
         public ApplicationStatus Status { get; private set; } // Pending, Assigned, Approved, Rejected
+        public string? RejectionReason { get; private set; }
         public DateTime SubmittedAt { get; private set; }
         public DateTime? ReviewedAt { get; private set; }
 
@@ -61,7 +70,9 @@ namespace Insurance.Domain.Entities
 
     int riskScore,
     decimal premium,
-    bool requiresManualReview)
+    bool requiresManualReview,
+    DateTime startDate,
+    DateTime endDate)
         {
             return new PolicyApplication
             {
@@ -84,7 +95,10 @@ namespace Insurance.Domain.Entities
                 CalculatedPremium = premium,
                 RequiresManualReview = requiresManualReview,
 
-                Status = ApplicationStatus.Submitted,
+                StartDate = startDate,
+                EndDate = endDate,
+
+                Status = ApplicationStatus.Pending,
                 SubmittedAt = DateTime.UtcNow
             };
         }
@@ -96,17 +110,26 @@ namespace Insurance.Domain.Entities
                 throw new InvalidOperationException("Only pending applications can be approved.");
 
             AgentId = agentId;
-            Status = ApplicationStatus.Approved;
+            Status = ApplicationStatus.AgentApproved;
             ReviewedAt = DateTime.UtcNow;
         }
 
-        public void Reject(int agentId)
+        public void FinalizeApproval()
+        {
+            if (Status != ApplicationStatus.AgentApproved)
+                throw new InvalidOperationException("Only agent-approved applications can be finalized and paid.");
+
+            Status = ApplicationStatus.Approved;
+        }
+
+        public void Reject(int agentId, string reason)
         {
             if (Status != ApplicationStatus.Pending &&
                 Status != ApplicationStatus.Assigned)
                 throw new InvalidOperationException("Only pending applications can be rejected.");
 
             AgentId = agentId;
+            RejectionReason = reason;
             Status = ApplicationStatus.Rejected;
             ReviewedAt = DateTime.UtcNow;
         }
@@ -118,6 +141,18 @@ namespace Insurance.Domain.Entities
 
             AgentId = agentId;
             Status = ApplicationStatus.Assigned;
+        }
+
+        /// <summary>
+        /// Links an already-uploaded document to this application.
+        /// Can be called at any point before approval/rejection.
+        /// </summary>
+        public void AttachDocument(int documentId)
+        {
+            if (documentId <= 0)
+                throw new ArgumentException("Document ID must be a positive integer.", nameof(documentId));
+
+            DocumentId = documentId;
         }
 
     }

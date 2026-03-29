@@ -8,6 +8,7 @@ export interface PolicyApplication {
   zipCode: string;
   coverageAmount: number;
   deductible: number;
+  startDate?: string;
 }
 
 export interface PremiumCalculation {

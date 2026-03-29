@@ -10,6 +10,7 @@ namespace Application.Interfaces
     public interface IPolicyRepository
     {
         Task<Policy> GetByIdAsync(int id);
+        Task<Policy> GetByIdWithDetailsAsync(int id);
         Task<Policy> GetByApplicationIdAsync(int applicationId);
         Task<IEnumerable<Policy>> GetByCustomerIdAsync(int customerId);
         Task<IEnumerable<Policy>> GetByAgentIdAsync(int agentId);

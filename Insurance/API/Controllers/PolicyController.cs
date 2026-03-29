@@ -69,7 +69,7 @@ namespace API.Controllers
         }
 
         [HttpGet("all")]
-        [Authorize(Roles = "Admin,Agent")]
+        [Authorize(Roles = "Admin,Agent,ClaimsOfficer")]
         public async Task<IActionResult> GetAllPolicies()
         {
             var response = await _policyService.GetAllPoliciesAsync();

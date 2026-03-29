@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,6 +10,7 @@ namespace Insurance.Application.Interfaces
     public interface IPolicyApplicationRepository
     {
         Task<PolicyApplication?> GetByIdAsync(int id);
+        Task<PolicyApplication?> GetByIdWithDetailsAsync(int id);
         Task<IEnumerable<PolicyApplication>> GetByAgentIdAsync(int agentId);
         Task<IEnumerable<PolicyApplication>> GetByCustomerIdAsync(int customerId);
         Task<IEnumerable<PolicyApplication>> GetPendingApplicationsAsync();

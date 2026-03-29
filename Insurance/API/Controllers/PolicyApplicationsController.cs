@@ -1,4 +1,4 @@
-﻿using Application.DTOs.Policy;
+using Application.DTOs.Policy;
 using Application.Interfaces;
 using Insurance.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -17,19 +17,25 @@ namespace API.Controllers
         private readonly IAgentRepository _agentRepository;
         private readonly IPolicyApplicationRepository _applicationRepository;
         private readonly IPolicyRepository _policyRepository;
+        private readonly IApplicationDocumentRepository _docRepository;
+        private readonly IVerificationService _verificationService;
 
         public PolicyApplicationsController(
             IPolicyApplicationService applicationService,
             ICustomerRepository customerRepository,
             IAgentRepository agentRepository,
             IPolicyApplicationRepository applicationRepository,
-            IPolicyRepository policyRepository)
+            IPolicyRepository policyRepository,
+            IApplicationDocumentRepository docRepository,
+            IVerificationService verificationService)
         {
             _applicationService = applicationService;
             _customerRepository = customerRepository;
             _agentRepository = agentRepository;
             _applicationRepository = applicationRepository;
             _policyRepository = policyRepository;
+            _docRepository = docRepository;
+            _verificationService = verificationService;
         }
 
         [Authorize(Roles = "Customer")]
@@ -120,25 +126,38 @@ namespace API.Controllers
                 return Ok(new List<object>());
 
             var applications = await _applicationRepository.GetByAgentIdAsync(agent.Id);
-            
-            var result = applications.Select(app => new
+
+            // Pull document metadata for all returned applications in one DB round-trip
+            var appIds = applications.Select(a => a.Id).ToList();
+            var docList = await _docRepository.GetByApplicationIdsAsync(appIds);
+            var docs = docList.ToDictionary(d => d.PolicyApplicationId);
+
+            var result = applications.Select(app =>
             {
-                id = app.Id,
-                customerId = app.CustomerId,
-                customerName = app.Customer?.User?.FullName ?? "Unknown",
-                customerEmail = app.Customer?.User?.Email ?? "N/A",
-                policyProductId = app.PolicyProductId,
-                assetType = app.AssetType,
-                assetValue = app.AssetValue,
-                coverageAmount = app.CoverageAmount,
-                calculatedPremium = app.CalculatedPremium,
-                riskScore = app.RiskScore,
-                status = app.Status.ToString(),
-                submittedAt = app.SubmittedAt,
-                agentId = app.AgentId,
-                city = app.City,
-                state = app.State,
-                requiresManualReview = app.RequiresManualReview
+                docs.TryGetValue(app.Id, out var doc);
+                return new
+                {
+                    id = app.Id,
+                    customerId = app.CustomerId,
+                    customerName = app.Customer?.User?.FullName ?? "Unknown",
+                    customerEmail = app.Customer?.User?.Email ?? "N/A",
+                    policyProductId = app.PolicyProductId,
+                    assetType = app.AssetType,
+                    assetValue = app.AssetValue,
+                    coverageAmount = app.CoverageAmount,
+                    calculatedPremium = app.CalculatedPremium,
+                    riskScore = app.RiskScore,
+                    status = app.Status.ToString(),
+                    submittedAt = app.SubmittedAt,
+                    agentId = app.AgentId,
+                    city = app.City,
+                    state = app.State,
+                    requiresManualReview = app.RequiresManualReview,
+                    rejectionReason = app.RejectionReason,
+                    documentId = doc?.Id,
+                    documentFileName = doc?.FileName,
+                    documentContentType = doc?.ContentType
+                };
             });
 
             return Ok(result);
@@ -161,7 +180,7 @@ namespace API.Controllers
 
         [Authorize(Roles = "Agent")]
         [HttpPost("{id}/reject")]
-        public async Task<IActionResult> RejectApplication(int id)
+        public async Task<IActionResult> RejectApplication(int id, [FromBody] RejectApplicationDto dto)
         {
             int userId = int.Parse(
                 User.FindFirst(ClaimTypes.NameIdentifier).Value);
@@ -170,8 +189,30 @@ namespace API.Controllers
             if (agent == null)
                 return BadRequest(new { message = "Agent profile not found" });
 
-            await _applicationService.RejectApplicationAsync(id, agent.Id);
+            await _applicationService.RejectApplicationAsync(id, agent.Id, dto.Reason);
             return Ok(new { message = "Application rejected" });
+        }
+
+        [Authorize(Roles = "Agent")]
+        [HttpPost("{id}/verify")]
+        public async Task<IActionResult> VerifyApplication(int id)
+        {
+            int userId = int.Parse(
+                User.FindFirst(ClaimTypes.NameIdentifier).Value);
+
+            var agent = await _agentRepository.GetByUserIdAsync(userId);
+            if (agent == null)
+                return BadRequest(new { message = "Agent profile not found" });
+
+            try
+            {
+                var result = await _verificationService.VerifyApplicationAsync(id, agent.Id);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         [Authorize(Roles = "Agent")]
